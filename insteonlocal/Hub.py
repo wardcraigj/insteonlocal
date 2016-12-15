@@ -278,7 +278,7 @@ class Hub(object):
 
         sleep(2)
 
-        status = self.getBufferStatus()
+        status = self.getBufferStatus(deviceId)
 
         return status
 
@@ -305,7 +305,7 @@ class Hub(object):
         # position would show if the buffer has overlapped and allow ignoring the old stuff after
         buffer_end = raw_text[-2:]
         buffer_end_int = int(buffer_end, 16)
-        raw_text = raw_text[0:buffer_end_int]
+        #raw_text = raw_text[0:buffer_end_int]
         self.logger.info('bufferEnd hex {} dec {}'.format(buffer_end, buffer_end_int))
         self.logger.info('getBufferStatus: non wrapped {}'.format(raw_text))
 
