@@ -10,6 +10,7 @@ import requests
 from insteonlocal.Switch import Switch
 from insteonlocal.Group import Group
 from insteonlocal.Dimmer import Dimmer
+from insteonlocal.Thermostat import Thermostat
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -921,3 +922,8 @@ class Hub(object):
         """Create switch object"""
         switch_obj = Switch(self, device_id)
         return switch_obj
+
+    def thermostat(self, device_id):
+        """Create switch object"""
+        thermostat_obj = Thermostat(self, device_id)
+        return thermostat_obj
