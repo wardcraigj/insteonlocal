@@ -13,6 +13,8 @@ from time import sleep
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>
+TEMP_UNIT_CELSIUS = 'C'
+TEMP_UNIT_FAHRENHEIT = 'F'
 
 class Thermostat():
     """This class defines an object for an INSTEON Thermostat"""
@@ -28,22 +30,29 @@ class Thermostat():
         self.logger.info("Thermostat %s status: %s", self.device_id,
                          pprint.pformat(status))
         return status
+    def tempUnits(self):
+        """Get the temperature units from device"""
+
+        status = self.getExtendedStatus()
+
+        if status['success']:
+            cels_mask = 0x08
+            celsius = cels_mask & int(status['user_data_13'], 16)
+
+            if celsius > 0:
+                units = TEMP_UNIT_CELSIUS
+            else:
+                units = TEMP_UNIT_FAHRENHEIT
+        else:
+            units = False
+
+        return units
 
     def currentTemp(self):
         """Get the current temperature from device"""
-        self.hub.direct_command(self.device_id, '6B', '03')
+        self.hub.direct_command(self.device_id, '6B', '0F')
 
-        success = self.hub.check_success(self.device_id, '6B', '03')
-
-        status = self.hub.get_buffer_status(self.device_id)
-        attempts = 0
-        while not status['success'] and attempts < 9:
-            if attempts % 3 == 0:
-                self.hub.direct_command(self.device_id, '6B', '03')
-            else:
-                sleep(1)
-            status = self.hub.get_buffer_status(self.device_id)
-            attempts += 1
+        status = self.getResponseStatus('6B', '0F')
 
         if status['success']:
             temp = int(status['cmd2'], 16) / 2
@@ -52,6 +61,57 @@ class Thermostat():
 
         return temp
 
+    def systemMode(self):
+        """Get the current mode from device"""
+        modes = {
+            0: 'Off',
+            1: 'Auto',
+            2: 'Heat',
+            3: 'Cool',
+            4: 'Program'
+        }
+
+        status = self.getExtendedStatus()
+
+        if status:
+            ret = modes.get(int(status['user_data_8']))
+        else:
+            ret = False
+
+        return ret
+
+    def getExtendedStatus(self):
+        """Get extended status from thermostat"""
+        ext = self.hub.build_extended_payload()
+        self.hub.direct_command(self.device_id, '2E', '00', ext)
+        status = self.getResponseStatus('2E', '00', ext)
+
+        return status
+
+    def getResponseStatus(self, command, command2, ext={}):
+        status = self.hub.get_buffer_status(self.device_id)
+
+        attempts = 0
+        while not status['success'] and attempts < 9:
+            if attempts % 3 == 0:
+                self.hub.direct_command(self.device_id, command, command2, ext)
+            else:
+                sleep(1)
+            status = self.hub.get_buffer_status(self.device_id)
+
+            if status['success'] and ext == {}:
+                status['success'] = True
+            elif status['success'] and ext != {} and status['im_code'] == '51':
+                status['success'] = True
+            else:
+                status['success'] = False
+
+            attempts += 1
+
+        if status['success']:
+            return status
+        else:
+            return False
 
     def beep(self):
         """Make dimmer beep. Not all devices support this"""

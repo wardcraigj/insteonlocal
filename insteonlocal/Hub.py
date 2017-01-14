@@ -112,6 +112,20 @@ class Hub(object):
         return self.post_direct_command(command_url)
 
 
+    def build_extended_payload(self, byte_dict={}):
+        """Builds an extened payload of 14bytes/28chars from a dict of bytenum-val pairs
+        there is no validation on the vals"""
+        payload = ''
+
+        for i in range(14):
+            if str(i) in byte_dict:
+                payload += byte_dict[i]
+            else:
+                payload += '00'
+
+
+        return payload
+
     def direct_command_hub(self, command):
         """Send direct hub command"""
         self.logger.info("direct_command_hub: Command %s", command)

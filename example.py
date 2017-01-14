@@ -115,5 +115,8 @@ except requests.exceptions.RequestException as e:
 #Thermostat stuff
 thermostat = hub.thermostat('251A12')
 print('current temp is ' + format(thermostat.currentTemp()))
+print('current units are ' + format(thermostat.tempUnits()))
+print('current mode is ' + format(thermostat.systemMode()))
+
 thermostat.beep()
 
