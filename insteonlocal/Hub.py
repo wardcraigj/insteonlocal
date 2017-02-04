@@ -305,7 +305,7 @@ class Hub(object):
             sleep(1)
 
             status = self.get_buffer_status(device_id)
-            while not status['success'] and attempts < 9:
+            while ('success' not in status['success'] or status['success'] == False) and attempts < 9:
                 status = self.get_command_response_from_cache(device_id, '19', level)
                 if not status:
                     if attempts % 3 == 0:
