@@ -32,6 +32,7 @@ from insteonlocal.Dimmer import Dimmer
 # switch on updates/broadcasts
 
 CACHE_TTL = 30 #30 seconds
+HOLD_COMMANDS = {'19'}
 
 class Hub(object):
     """Class for local control of insteon hub"""
@@ -43,6 +44,7 @@ class Hub(object):
         self.http_code = 0
         self.timeout = timeout
         self.command_cache = {}
+        self.busy = False
 
         self.buffer_status = OrderedDict()
 
@@ -97,6 +99,9 @@ class Hub(object):
     def direct_command(self, device_id, command, command2, extended_payload=None):
         """Wrapper to send posted direct command and get response. Level is 0-100.
         extended_payload is 14 bytes/28 chars"""
+        if self.busy and command in HOLD_COMMANDS:
+            return False
+
         extended_payload = extended_payload or ''
         if not extended_payload:
             msg_type = '0'

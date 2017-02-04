@@ -34,6 +34,7 @@ class Dimmer():
         """Turn light on at saved ramp rate"""
         self.logger.info("Dimmer %s on level %s", self.device_id, level)
 
+        self.hub.busy = True
         self.hub.direct_command(self.device_id, '11', self.hub.brightness_to_hex(level))
 
         success = self.hub.check_success(self.device_id, '11', self.hub.brightness_to_hex(level))
@@ -42,6 +43,7 @@ class Dimmer():
                              self.device_id)
         else:
             self.logger.error("Dimmer %s on: Light did not turn on", self.device_id)
+        self.hub.busy = False
 
         return success
 
@@ -50,6 +52,7 @@ class Dimmer():
         """Turn light on to saved state using 'fast'"""
         self.logger.info("Dimmer %s on_saved", self.device_id)
 
+        self.hub.busy = True
         self.hub.direct_command(self.device_id, '12', '00')
 
         success = self.hub.check_success(self.device_id, '12', '00')
@@ -59,6 +62,7 @@ class Dimmer():
         else:
             self.logger.error("Dimmer %s on_saved: Light did not turn on",
                               self.device_id)
+        self.hub.busy = False
 
         return success
 
@@ -67,6 +71,7 @@ class Dimmer():
         """Turn light off at saved ramp rate"""
         self.logger.info("Dimmer %s off", self.device_id)
 
+        self.hub.busy = True
         self.hub.direct_command(self.device_id, '13', '00')
 
         success = self.hub.check_success(self.device_id, '13', '00')
@@ -76,6 +81,7 @@ class Dimmer():
         else:
             self.logger.error("Dimmer %s off: Light did not turn off",
                               self.device_id)
+        self.hub.busy = False
 
         return success
 
@@ -84,6 +90,7 @@ class Dimmer():
         """Turn light off"""
         self.logger.info("Dimmer %s off_instant", self.device_id)
 
+        self.hub.busy = True
         self.hub.direct_command(self.device_id, '14', '00')
 
         success = self.hub.check_success(self.device_id, '14', '00')
@@ -93,6 +100,7 @@ class Dimmer():
         else:
             self.logger.error("Dimmer %s off_instant: Light did not turn off",
                               self.device_id)
+        self.hub.busy = False
 
         return success
 
@@ -102,6 +110,7 @@ class Dimmer():
         self.logger.info("Dimmer %S change_level: level %s", self.device_id,
                          level)
 
+        self.hub.busy = True
         self.hub.direct_command(self.device_id, '21',
                                 self.hub.brightness_to_hex(level))
         success = self.hub.check_success(self.device_id, '21',
@@ -112,6 +121,7 @@ class Dimmer():
         else:
             self.logger.error("Dimmer %s change_level: Light level was not changed",
                               self.device_id)
+        self.hub.busy = False
 
         return success
 
@@ -120,6 +130,7 @@ class Dimmer():
         """Brighten light by one step"""
         self.logger.info("Dimmer %S brighten_step", self.device_id)
 
+        self.hub.busy = True
         self.hub.direct_command(self.device_id, '15', '00')
         success = self.hub.check_success(self.device_id, '15', '00')
         if success:
@@ -128,12 +139,13 @@ class Dimmer():
         else:
             self.logger.error("Dimmer %S brighten_step: Light brightened failure",
                               self.device_id)
-
+        self.hub.busy = False
 
     def dim_step(self):
         """Dim light by one step"""
         self.logger.info("Dimmer %S dim_step", self.device_id)
 
+        self.hub.busy = True
         self.hub.direct_command(self.device_id, '16', '00')
         success = self.hub.check_success(self.device_id, '16', '00')
         if success:
@@ -142,6 +154,7 @@ class Dimmer():
         else:
             self.logger.error("Dimmer %S dim_step: Light dim failure",
                               self.device_id)
+        self.hub.busy = False
 
         return success
 
