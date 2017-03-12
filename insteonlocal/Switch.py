@@ -70,6 +70,7 @@ class Switch():
         if success:
             self.logger.info("Switch %s on: Switch turned on successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Switch %s on: Switch did not turn on",
                               self.device_id)
@@ -88,6 +89,7 @@ class Switch():
         if success:
             self.logger.info("Switch %s off: Switch turned off successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Switch %s off: Switch did not turn off",
                               self.device_id)

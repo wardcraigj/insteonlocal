@@ -40,6 +40,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %s on: Light turned on successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %s on: Light did not turn on", self.device_id)
 
@@ -56,6 +57,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %s on_saved: Light turned on successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %s on_saved: Light did not turn on",
                               self.device_id)
@@ -73,6 +75,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %s off: Light turned off successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %s off: Light did not turn off",
                               self.device_id)
@@ -90,6 +93,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %s off_instant: Light turned off successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %s off_instant: Light did not turn off",
                               self.device_id)
@@ -109,6 +113,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %s change_level: Light level changed successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %s change_level: Light level was not changed",
                               self.device_id)
@@ -125,6 +130,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %S brighten_step: Light brightened successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %S brighten_step: Light brightened failure",
                               self.device_id)
@@ -139,6 +145,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %S dim_step: Light dimmed successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %S dim_step: Light dim failure",
                               self.device_id)
@@ -165,6 +172,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %s start_change: Light started changing successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %s start_change: Light did not change",
                               self.device_id)
@@ -181,6 +189,7 @@ class Dimmer():
         if success:
             self.logger.info("Dimmer %s stop_change: Light stopped changing successfully",
                              self.device_id)
+            self.hub.clear_device_command_cache(self.device_id)
         else:
             self.logger.error("Dimmer %s stop_change: Light did not stop",
                               self.device_id)

@@ -3,13 +3,15 @@ import logging
 import logging.handlers
 import json
 from collections import OrderedDict
-from time import sleep
+from time import sleep, time
 from io import StringIO
 import pkg_resources
 import requests
+import os
 from insteonlocal.Switch import Switch
 from insteonlocal.Group import Group
 from insteonlocal.Dimmer import Dimmer
+from insteonlocal.Fan import Fan
 from insteonlocal.Thermostat import Thermostat
 
 #    This program is free software: you can redistribute it and/or modify
@@ -31,6 +33,10 @@ from insteonlocal.Thermostat import Thermostat
 # scene management
 # double tap scenes
 # switch on updates/broadcasts
+
+CACHE_TTL = 20 #seconds
+CACHE_FILE = '.state'
+LOCK_FILE = 'commands.lock'
 
 class Hub(object):
     """Class for local control of insteon hub"""
@@ -59,6 +65,9 @@ class Hub(object):
             self.logger.setLevel(logging.INFO)
         else:
             self.logger = logger
+
+        self.logger.info("Hub object initialized")
+
 
 
     def brightness_to_hex(self, level):
@@ -102,6 +111,7 @@ class Hub(object):
         else:
             msg_type = '1'
             msg_type_desc = 'Extended'
+            extended_payload = extended_payload.ljust(28, '0')
 
         self.logger.info("direct_command: Device: %s Command: %s Command 2: %s "
                          "MsgType: %s", device_id, command, command2, msg_type_desc)
@@ -287,7 +297,7 @@ class Hub(object):
         return status
 
 
-    def get_device_status(self, device_id, return_led=0):
+    def get_device_status(self, device_id, return_led=0, level=None):
         """Do a separate query to get device status. This can tell if device
         is on/off, lighting level, etc."""
         # status['responseCmd2'] is lighting level
@@ -297,27 +307,178 @@ class Hub(object):
 
         self.logger.info("\nget_device_status for device %s", device_id)
         device_id = device_id.upper()
+        status = False
 
-        if return_led == 1:
-            level = '01'
+        if not level:
+            if return_led == 1:
+                level = '01'
+            else:
+                level = '00'
+
+        if os.path.exists(device_id + CACHE_FILE):
+            status = self.get_command_response_from_cache(device_id, '19', level)
+
+        if not status:
+            self.logger.info("no cached status for device %s", device_id)
+            self.direct_command(device_id, '19', level)
+
+            attempts = 1
+            sleep(1)
+
+            status = self.get_buffer_status(device_id)
+            while 'success' not in status and attempts < 9:
+                status = self.get_command_response_from_cache(device_id, '19', level)
+                if not status:
+                    if attempts % 3 == 0:
+                        self.direct_command(device_id, '19', level)
+                    else:
+                        sleep(1)
+                    status = self.get_buffer_status(device_id)
+                attempts += 1
         else:
-            level = '00'
-        self.direct_command(device_id, '19', level)
+            self.logger.info("got cached status for device %s", device_id)
+
+        return status
+
+    def rebuild_cache(self, device_id, command, command2):
+
+
+        if os.path.exists(LOCK_FILE):
+            self.logger.info("cache building locked - killing proc %s", device_id)
+            os._exit(0)
+        else:
+            self.logger.info("no command lock - creating lock file %s", device_id)
+            file = open(LOCK_FILE, "w+")
+            json.dump({}, file)
+            file.close()
+
+
+        self.logger.info("rebuilding cache for device %s", device_id)
+        self.direct_command(device_id, command, command2)
+
 
         attempts = 1
         sleep(1)
 
         status = self.get_buffer_status(device_id)
-        while not status['success'] and attempts < 9:
-            if attempts % 3 == 0:
-                self.direct_command(device_id, '19', level)
-            else:
-                sleep(1)
+        while 'success' not in status and attempts < 9:
             status = self.get_buffer_status(device_id)
+            if not status:
+                if attempts % 3 == 0:
+                    self.direct_command(device_id, command, command2)
+                else:
+                    sleep(1)
+                status = self.get_buffer_status(device_id)
             attempts += 1
 
-        return status
+        self.logger.info("removing cache lock file %s", device_id)
+        os.remove(LOCK_FILE)
+        os._exit(0)
 
+    def get_cache_from_file(self, deviceid):
+        filename = deviceid + CACHE_FILE
+        cache_loaded = False
+        attempts = 0
+        data = {}
+
+        if not os.path.exists(filename):
+            file = open(filename, "w+")
+            json.dump({}, file)
+            file.close()
+            return {}
+
+        while not cache_loaded:
+            try:
+                with open(filename) as cachefile:
+                    data = json.load(cachefile)
+                    cachefile.close()
+
+                cache_loaded = True
+                break
+            except json.JSONDecodeError:
+                self.logger.info("couldn't decode cachefile")
+                if attempts >= 3:
+                    cache_loaded = True
+                else:
+                    attempts += 1
+        return data
+
+    def write_cache_file(self, cache, device_id):
+        filename = device_id + CACHE_FILE
+        self.logger.info("writing cache file for %s", device_id)
+
+        with open(filename + '.temp', 'w') as cachefile:
+            json.dump(cache, cachefile)
+
+        cachefile.close()
+
+        if os.path.exists(filename):
+            os.remove(filename)
+
+        os.rename(filename + '.temp', filename)
+
+    def get_command_response_from_cache(self, device_id, command, command2):
+        """Gets response"""
+        key = self.create_key_from_command(command, command2)
+        command_cache = self.get_cache_from_file(device_id)
+
+        if device_id not in command_cache:
+            command_cache[device_id] = {}
+            return False
+        elif key not in command_cache[device_id]:
+            return False
+
+        response = command_cache[device_id][key]
+        expired = False
+        if response['ttl'] < int(time()):
+            self.logger.info("cache expired for device %s", device_id)
+            expired = True
+
+            if os.path.exists(LOCK_FILE):
+                self.logger.info("cache locked - will wait to rebuild %s", device_id)
+            else:
+                self.logger.info("cache unlocked - will rebuild %s", device_id)
+                newpid = os.fork()
+                if newpid == 0:
+                    self.rebuild_cache(device_id, command, command2)
+
+        if expired:
+            self.logger.info("returning expired cached device status %s", device_id)
+        else:
+            self.logger.info("returning unexpired cached device status %s", device_id)
+
+        return response['response']
+
+
+    def clear_device_command_cache(self, device_id):
+
+        command_cache = self.get_cache_from_file(device_id)
+
+        command_cache[device_id] = {}
+
+        self.write_cache_file(command_cache, device_id)
+
+
+    def set_command_response_from_cache(self, response, device_id, command, command2):
+        """Sets response"""
+        if not device_id:
+            return False
+
+        key = self.create_key_from_command(command, command2)
+        ttl = int(time()) + CACHE_TTL
+
+        command_cache = self.get_cache_from_file(device_id)
+
+        if device_id not in command_cache:
+            command_cache[device_id] = {}
+
+        command_cache[device_id][key] = {'ttl': ttl, 'response': response}
+
+        self.write_cache_file(command_cache, device_id)
+
+    def create_key_from_command(self, command, command2):
+        """gets key"""
+        return command + command2
 
     def get_buffer_status(self, device_from=None):
         """Main method to read from buffer. Optionally pass in device to
@@ -575,15 +736,45 @@ class Hub(object):
 
             # Send Message (Pass through command to PLM)
             elif im_cmd == '62':
-                msg = msg + buffer_contents.read(14)
-
-                response_record['im_code_desc'] = 'Send Message'
-                response_record['raw'] = msg
+                msg = msg + buffer_contents.read(8)
                 response_record['id'] = msg[4:10]
                 response_record['flags'] = msg[10:12]
-                response_record['cmd1'] = msg[12:14]
-                response_record['cmd2'] = msg[14:16]
-                response_record['ack_or_nak'] = msg[16:18] # 06 ack 15 nak
+
+                # Standard Message
+                if response_record['flags'][0] == '0':
+                    response_record['im_code_desc'] = 'Send Standard Message'
+                    msg = msg + buffer_contents.read(6)
+                    response_record['cmd1'] = msg[12:14]
+                    response_record['cmd2'] = msg[14:16]
+                    response_record['ack_or_nak'] = msg[16:18] # 06 ack 15 nak
+
+                # Extended Message
+                elif response_record['flags'][0] == '1':
+                    response_record['im_code_desc'] = 'Send Extended Message'
+                    msg = msg + buffer_contents.read(34)
+                    response_record['cmd1'] = msg[12:14]
+                    response_record['cmd2'] = msg[14:16]
+                    response_record['user_data_1'] = msg[16:18]
+                    response_record['user_data_2'] = msg[18:20]
+                    response_record['user_data_3'] = msg[20:22]
+                    response_record['user_data_4'] = msg[22:24]
+                    response_record['user_data_5'] = msg[24:26]
+                    response_record['user_data_6'] = msg[26:28]
+                    response_record['user_data_7'] = msg[28:30]
+                    response_record['user_data_8'] = msg[30:32]
+                    response_record['user_data_9'] = msg[32:34]
+                    response_record['user_data_10'] = msg[34:36]
+                    response_record['user_data_11'] = msg[36:38]
+                    response_record['user_data_12'] = msg[38:40]
+                    response_record['user_data_13'] = msg[40:42]
+                    response_record['user_data_14'] = msg[42:44]
+                    response_record['ack_or_nak'] = msg[44:46] # 06 ack 15 nak
+
+                # Not implemented
+                else:
+                    self.logger.error('Not implemented, message flag %s' % response_record['flags'])
+
+                response_record['raw'] = msg
 
             # Send X10 (not implemented)
             elif im_cmd == '63':
@@ -842,17 +1033,18 @@ class Hub(object):
                 return_record = response_record
                 return_record['error'] = False
                 return_record['success'] = True
+                if 'cmd1' in response_record and 'cmd2' in response_record:
+                    self.set_command_response_from_cache(response_record, device_from, response_record['cmd1'], response_record['cmd2'])
+                return return_record
 
             self.buffer_status['msgs'].append(response_record)
+
 
         # Tell hub to clear buffer
         self.clear_buffer()
 
         #pprint.pprint(self.buffer_status)
         self.logger.debug("get_buffer_status: %s", pprint.pformat(self.buffer_status))
-
-        if device_from:
-            return return_record
 
         return self.buffer_status
 
@@ -936,6 +1128,13 @@ class Hub(object):
         """Create switch object"""
         switch_obj = Switch(self, device_id)
         return switch_obj
+
+
+    def fan(self, device_id):
+        """Create fan object"""
+        fan_obj = Fan(self, device_id)
+        return fan_obj
+
 
     def thermostat(self, device_id):
         """Create switch object"""
