@@ -47,6 +47,11 @@ except requests.exceptions.RequestException as e:
 #    print("Got name of " + modelInfo["name"])
 #pprint.pprint(modelInfo)
 
+# Outlet example
+outlet1 = hub.onoffoutlet('444444');
+outlet1.bottom_on();
+exit
+
 # Dimmer example
 #dimmer1 = hub.dimmer('42902e')
 #dimmer1.beep()
@@ -95,11 +100,11 @@ except requests.exceptions.RequestException as e:
 #switch1.off()
 #status = switch1.status()
 #pprint.pprint(status)
-# switch1.on()
-# status = switch1.status()
-# print("new status\n")
-# pprint.pprint(status)
-# switch1.off()
+#switch1.on()
+#status = switch1.status()
+#print("new status\n")
+#pprint.pprint(status)
+#switch1.off()
 
 # switch join new group 03 - IN DEVeLOPMENT
 #group3 = hub.group("03")
@@ -112,11 +117,4 @@ except requests.exceptions.RequestException as e:
 #hub.get_buffer_status()
 ##group3.cancel_link_unlink_mode()
 
-#Thermostat stuff
-thermostat = hub.thermostat('251A12')
-print('current temp is ' + format(thermostat.currentTemp()))
-print('current units are ' + format(thermostat.tempUnits()))
-print('current mode is ' + format(thermostat.systemMode()))
-
-thermostat.beep()
-
+#hub.get_linked()

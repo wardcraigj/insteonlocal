@@ -12,6 +12,7 @@ from insteonlocal.Switch import Switch
 from insteonlocal.Group import Group
 from insteonlocal.Dimmer import Dimmer
 from insteonlocal.Fan import Fan
+from insteonlocal.OnOffOutlet import OnOffOutlet
 from insteonlocal.Thermostat import Thermostat
 
 #    This program is free software: you can redistribute it and/or modify
@@ -103,7 +104,7 @@ class Hub(object):
 
     def direct_command(self, device_id, command, command2, extended_payload=None):
         """Wrapper to send posted direct command and get response. Level is 0-100.
-        extended_payload is 14 bytes/28 chars"""
+        extended_payload is 14 bytes/28 chars..but last 2 chars is a generated checksum so leave off"""
         extended_payload = extended_payload or ''
         if not extended_payload:
             msg_type = '0'
@@ -111,10 +112,36 @@ class Hub(object):
         else:
             msg_type = '1'
             msg_type_desc = 'Extended'
-            extended_payload = extended_payload.ljust(28, '0')
 
-        self.logger.info("direct_command: Device: %s Command: %s Command 2: %s "
-                         "MsgType: %s", device_id, command, command2, msg_type_desc)
+            extended_payload = extended_payload.ljust(26, '0')
+
+            ### Determine checksum to add onto the payload for I2CS support
+            checksum_payload_hex = [int("0x" + extended_payload[i:i+2],16) for i in range(0,len(extended_payload)-1,2)]
+            checksum_payload_hex.insert(0, int("0x" + command2, 16))
+            checksum_payload_hex.insert(0, int("0x" + command, 16))
+
+            # Get sum of all hex bytes
+            bytessum = 0
+            for ch in checksum_payload_hex:
+                bytessum += ch
+            bytessumStr = hex(bytessum)
+
+            # Get last byte of the bytessum
+            lastByte = bytessumStr[-2:]
+            lastByte = '0x' + lastByte.zfill(2)
+            # Determine compliment of last byte
+            lastByteHex = int(lastByte, 16)
+            lastCompliment = lastByteHex ^ 0xFF
+            # Add one to create checksum
+            checksum = hex(lastCompliment + 0x01)
+            # Remove 0x prefix
+            checksum_final = (format(int(checksum, 16), 'x'))
+            checksum_final = checksum_final.upper()
+            #print("final checksum")
+            #pprint.pprint(checksum_final)
+            extended_payload = extended_payload + checksum_final
+
+        self.logger.info("direct_command: Device: %s Command: %s Command 2: %s Extended: %s MsgType: %s", device_id, command, command2, extended_payload, msg_type_desc)
         device_id = device_id.upper()
         command_url = (self.hub_url + '/3?' + "0262"
                        + device_id + msg_type + "F"
@@ -1135,6 +1162,11 @@ class Hub(object):
         fan_obj = Fan(self, device_id)
         return fan_obj
 
+
+    def onoffoutlet(self, device_id):
+        """Create outlet object"""
+        outlet_obj = OnOffOutlet(self, device_id)
+        return outlet_obj
 
     def thermostat(self, device_id):
         """Create switch object"""
