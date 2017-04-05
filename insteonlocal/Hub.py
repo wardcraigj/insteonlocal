@@ -12,7 +12,7 @@ from insteonlocal.Switch import Switch
 from insteonlocal.Group import Group
 from insteonlocal.Dimmer import Dimmer
 from insteonlocal.Fan import Fan
-from insteonlocal.OnOffOutlet import OnOffOutlet
+#from insteonlocal.OnOffOutlet import OnOffOutlet
 from insteonlocal.Thermostat import Thermostat
 
 #    This program is free software: you can redistribute it and/or modify
@@ -102,16 +102,24 @@ class Hub(object):
         return req
 
 
-    def direct_command(self, device_id, command, command2, extended_payload=None):
+    def direct_command(self, device_id, command, command2, extended_payload=None, msg_type=None):
         """Wrapper to send posted direct command and get response. Level is 0-100.
         extended_payload is 14 bytes/28 chars..but last 2 chars is a generated checksum so leave off"""
         extended_payload = extended_payload or ''
-        if not extended_payload:
-            msg_type = '0'
+
+        if msg_type == '0':
             msg_type_desc = 'Standard'
-        else:
-            msg_type = '1'
+        elif msg_type == '1':
             msg_type_desc = 'Extended'
+        else:
+            if not extended_payload:
+                msg_type = '0'
+                msg_type_desc = 'Standard'
+            else:
+                msg_type = '1'
+                msg_type_desc = 'Extended'
+
+
 
             extended_payload = extended_payload.ljust(26, '0')
 
@@ -1163,10 +1171,10 @@ class Hub(object):
         return fan_obj
 
 
-    def onoffoutlet(self, device_id):
-        """Create outlet object"""
-        outlet_obj = OnOffOutlet(self, device_id)
-        return outlet_obj
+    # def onoffoutlet(self, device_id):
+    #     """Create outlet object"""
+    #     outlet_obj = OnOffOutlet(self, device_id)
+    #     return outlet_obj
 
     def thermostat(self, device_id):
         """Create switch object"""

@@ -37,7 +37,7 @@ class Thermostat():
 
         if status['success']:
             cels_mask = 0x08
-            celsius = cels_mask & int(status['user_data_13'], 16)
+            celsius = cels_mask & int(status['msgs'][0]['user_data_13'], 16)
 
             if celsius > 0:
                 units = TEMP_UNIT_CELSIUS
@@ -50,14 +50,28 @@ class Thermostat():
 
     def currentTemp(self):
         """Get the current temperature from device"""
-        self.hub.direct_command(self.device_id, '6B', '0F')
 
-        status = self.getResponseStatus('6B', '0F')
 
-        if status['success']:
-            temp = int(status['cmd2'], 16) / 2
-        else:
-            temp = False
+        #ext = self.hub.build_extended_payload()
+
+        self.hub.direct_command(self.device_id, '6A', '00')
+        status = self.hub.get_buffer_status(self.device_id)
+
+        #status = self.getExtendedStatus()
+        #status = self.getResponseStatus('6A', '00')
+
+        attempts = 0
+        temp = False
+        if status['success'] and status['msgs'][0]['cmd2'] != '00':
+            temp = int(status['msgs'][0]['cmd2'], 16) / 2
+
+        while temp is False and attempts < 9:
+            if status['success'] and status['msgs'][0]['cmd2'] != '00':
+                temp = int(status['msgs'][0]['cmd2'], 16) / 2
+            else:
+                sleep(1)
+                attempts += 1
+                status = self.hub.get_buffer_status(self.device_id)
 
         return temp
 
@@ -73,8 +87,8 @@ class Thermostat():
 
         status = self.getExtendedStatus()
 
-        if status:
-            ret = modes.get(int(status['user_data_8']))
+        if status['success']:
+            ret = modes.get(int(status['msgs'][0]['user_data_8']))
         else:
             ret = False
 
@@ -94,7 +108,8 @@ class Thermostat():
         attempts = 0
         while not status['success'] and attempts < 9:
             if attempts % 3 == 0:
-                self.hub.direct_command(self.device_id, command, command2, ext)
+                sleep(1)
+                # self.hub.direct_command(self.device_id, command, command2, ext)
             else:
                 sleep(1)
             status = self.hub.get_buffer_status(self.device_id)
