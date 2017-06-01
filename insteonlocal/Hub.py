@@ -41,7 +41,8 @@ LOCK_FILE = 'commands.lock'
 
 class Hub(object):
     """Class for local control of insteon hub"""
-    def __init__(self, ip_addr, username, password, port="25105", timeout=10, logger=None):
+    def __init__(self, ip_addr, username, password, port="25105", timeout=10, logger=None,
+                 cachepath=tempfile.gettempdir()):
         self.ip_addr = ip_addr
         self.username = username
         self.password = password
@@ -68,8 +69,8 @@ class Hub(object):
             self.logger = logger
 
         self.logger.info("Hub object initialized")
-        temp_dir = tempfile.gettempdir()
-        os.chdir(temp_dir)
+
+        os.chdir(cachepath)
 
 
 
