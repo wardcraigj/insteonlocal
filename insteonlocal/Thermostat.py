@@ -62,13 +62,15 @@ class Thermostat():
 
         attempts = 0
         temp = False
-        if status['success'] and status['msgs'][0]['cmd2'] != '00':
-            temp = int(status['msgs'][0]['cmd2'], 16) / 2
+        if status['success'] is True and status['msgs'][0]['cmd2'] != '00':
+            temp = int(status['cmd2'], 16) / 2
 
         while temp is False and attempts < 9:
-            if status['success'] and status['msgs'][0]['cmd2'] != '00':
-                temp = int(status['msgs'][0]['cmd2'], 16) / 2
+            if status['success'] is True:
+                temp = int(status['cmd2'], 16) / 2
             else:
+                if attempts % 3 == 0:
+                    self.hub.direct_command(self.device_id, '6A', '00')
                 sleep(1)
                 attempts += 1
                 status = self.hub.get_buffer_status(self.device_id)
