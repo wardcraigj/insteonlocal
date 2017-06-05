@@ -51,18 +51,12 @@ class Thermostat():
     def currentTemp(self):
         """Get the current temperature from device"""
 
-
-        #ext = self.hub.build_extended_payload()
-
         self.hub.direct_command(self.device_id, '6A', '00')
         status = self.hub.get_buffer_status(self.device_id)
 
-        #status = self.getExtendedStatus()
-        #status = self.getResponseStatus('6A', '00')
-
         attempts = 0
         temp = False
-        if status['success'] is True and status['msgs'][0]['cmd2'] != '00':
+        if status['success'] is True:
             temp = int(status['cmd2'], 16) / 2
 
         while temp is False and attempts < 9:
@@ -76,6 +70,29 @@ class Thermostat():
                 status = self.hub.get_buffer_status(self.device_id)
 
         return temp
+
+    def currentHumidity(self):
+        """Get the current temperature from device"""
+
+        self.hub.direct_command(self.device_id, '6A', '60')
+        status = self.hub.get_buffer_status(self.device_id)
+
+        attempts = 0
+        humidity = False
+        if status['success'] is True:
+            humidity = int(status['cmd2'], 16)
+
+        while humidity is False and attempts < 9:
+            if status['success'] is True:
+                humidity = int(status['cmd2'], 16)
+            else:
+                if attempts % 3 == 0:
+                    self.hub.direct_command(self.device_id, '6A', '60')
+                sleep(1)
+                attempts += 1
+                status = self.hub.get_buffer_status(self.device_id)
+
+        return humidity
 
     def systemMode(self):
         """Get the current mode from device"""
