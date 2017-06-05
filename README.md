@@ -3,10 +3,26 @@
 Python library for controlling Insteon Hub locally. This allows you to send direct commands to your Insteon Hub without having to go through the cloud, or obtain a developer API key 
 (which can be hard or impossible to get from Insteon)
 
+## Troubleshooting/Reporting
+
+1. Download the insteon local package from https://github.com/phareous/insteonlocal
+2. Copy config.py.example to config.py and update the host/user/pass to your own hub's information
+3. Edit example.py to call the commands you want to test such as:
+hub.get_linked()
+sys.exit(1)
+4. Open an issue at https://github.com/phareous/insteonlocal
+Include the log file, the list of device models and ID's, and your hub model
+
 ## Changes
 
-0.49 WIP Adds support for i2c2 checksums on extended msg, adds support for
-controlling on/off outlets (2663-222)
+0.52 2017-06-01 Set path for cache files in constructor
+
+0.51 2017-04-08 Use system temp dir
+
+0.50 2017-04-06 Fix cache error parsing [@wardcraigj]
+
+0.49 2017-03-16 Adds support for i2c2 checksums on extended msg, adds 
+support for controlling on/off outlets (2663-222) [@phareous]
 
 0.48 2017-03-09 Fixes with caching and device ids [@phareous]
 
